@@ -1,0 +1,457 @@
+.container {
+  height: 100%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.splitter {
+  height: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+// Gitgraph Container Styles
+.gitgraphContainer {
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: auto;
+  background: #fafbfc;
+  padding: 16px;
+}
+
+// Branch List Styles
+.branchList {
+  height: 100%;
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.branchListHeader {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 700;
+  font-size: 15px;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.branchListContent {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+}
+
+.branchSection {
+  margin-bottom: 16px;
+}
+
+.branchSectionTitle {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.branchItem {
+  padding: 6px 16px;
+  margin: 1px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #475569;
+
+  &:hover {
+    background: #f1f5f9;
+  }
+
+  svg {
+    font-size: 16px;
+    opacity: 0.6;
+  }
+}
+
+.branchItemActive {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 500;
+
+  &:hover {
+    background: #f1f5f9;
+  }
+
+  svg {
+    opacity: 1;
+    color: #475569;
+  }
+}
+
+.currentBadge {
+  margin-left: auto;
+  color: #faad14;
+  font-size: 12px;
+}
+
+// Commit History Styles
+.commitHistory {
+  height: 100%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e2e8f0;
+}
+
+.commitHistoryHeader {
+  padding: 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+  z-index: 10;
+}
+
+.commitHistoryTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 16px;
+  letter-spacing: -0.025em;
+}
+
+.filterBar {
+  display: flex;
+  gap: 8px;
+}
+
+.searchInput {
+  flex: 1;
+  position: relative;
+
+  input {
+    width: 100%;
+    padding: 8px 16px 8px 40px;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1e293b;
+    outline: none;
+
+    &::placeholder {
+      color: #94a3b8;
+    }
+
+    &:focus {
+      ring: 1px;
+      ring-color: rgba(59, 130, 246, 0.5);
+    }
+  }
+
+  .searchIcon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 16px;
+  }
+}
+
+.filterButton {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #e2e8f0;
+  }
+
+  svg {
+    margin-right: 8px;
+    font-size: 16px;
+  }
+}
+
+.commitListContainer {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.commitListWrapper {
+  display: flex;
+  height: 100%;
+  position: relative;
+}
+
+.gitgraphColumn {
+  width: 64px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.commitList {
+  flex: 1;
+  padding-right: 24px;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+}
+
+.commitRow {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #f8fafc;
+  }
+}
+
+.commitRowActive {
+  padding: 0 16px;
+  margin: 0 -8px;
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+  &:hover {
+    background: #f0f7ff;
+  }
+}
+
+.commitTitle {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.25;
+  color: #0f172a;
+  margin: 0;
+}
+
+.commitAuthor {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.commitDate {
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+// Commit Detail Styles
+.commitDetail {
+  height: 100%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.changedFiles {
+  flex: 0 0 60%;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.changedFilesContent {
+  padding: 20px;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+}
+
+.sectionTitle {
+  font-weight: 700;
+  font-size: 16px;
+  color: #0f172a;
+  margin-bottom: 20px;
+}
+
+.fileListHeader {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  letter-spacing: 0.05em;
+}
+
+.fileList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  margin-bottom: 16px;
+
+  svg {
+    font-size: 16px;
+    color: #94a3b8;
+    margin-right: 12px;
+  }
+}
+
+.fileName {
+  color: #334155;
+
+  &:hover {
+    color: #3b82f6;
+  }
+}
+
+.fileActions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+
+  svg {
+    font-size: 18px;
+    margin: 0 2px;
+  }
+}
+
+.iconAdded {
+  color: #22c55e;
+}
+
+.iconModified {
+  color: #f59e0b;
+}
+
+.iconDeleted {
+  color: #ef4444;
+}
+
+.commitInfo {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+}
+
+.commitSubject {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.commitBody {
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.commitMeta {
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+  margin-top: 16px;
+}
+
+.metaRow {
+  display: flex;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.metaLabel {
+  width: 80px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.metaValue {
+  color: #64748b;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.emptyState {
+  padding: 20px;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+}

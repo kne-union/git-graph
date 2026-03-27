@@ -1,0 +1,28 @@
+{
+  "isFull": true,
+  "list": [
+    {
+      "title": "基础示例",
+      "description": "展示GitGraphManager的基本使用方法，包含分支列表、提交历史和提交详情三个面板",
+      "code": "./base.js",
+      "scope": [
+        {
+          "name": "_GitGraph",
+          "packageName": "@kne/current-lib_git-graph",
+          "importStatement": "import * as _GitGraph from \"@kne/git-graph\""
+        },
+        {
+          "packageName": "@kne/current-lib_git-graph/dist/index.css"
+        },
+        {
+          "name": "antd",
+          "packageName": "antd"
+        },
+        {
+          "name": "_mockData",
+          "packageName": "./doc/mockData.js"
+        }
+      ]
+    }
+  ]
+}
