@@ -254,23 +254,17 @@ const GitGraphManagerInner = ({ data, onCommitSelect, onBranchSelect }) => {
               branchMap[branchName] = branch;
             }
 
-            // 注意：gitgraph 的 branch.merge() 不支持自定义 renderMessage
-            // 所以我们将所有提交（包括 merge）都作为普通提交处理
-            // 这样可以使用自定义的 renderMessage 来统一渲染样式
-
-            /*
             // 处理合并提交
             if (isMerge && parents.length >= 2) {
               console.log('  -> Attempting merge for:', commit.commit.short);
-              
+
               // 优先从 subject 提取被合并的分支名
               let mergedBranchName = extractMergedBranch(commit);
-              
+
               // 如果提取失败，使用第二个父提交的分支
               if (!mergedBranchName) {
                 const mergedParentHash = parents[1];
-                mergedBranchName = commitBranchMap[mergedParentHash] || 
-                  commitMap[mergedParentHash]?.commit.primaryBranch;
+                mergedBranchName = commitBranchMap[mergedParentHash] || commitMap[mergedParentHash]?.commit.primaryBranch;
               }
 
               console.log('  -> mergedBranchName:', mergedBranchName, 'exists in branchMap:', !!branchMap[mergedBranchName]);
@@ -279,23 +273,22 @@ const GitGraphManagerInner = ({ data, onCommitSelect, onBranchSelect }) => {
               if (mergedBranchName && mergedBranchName !== branchName && branchMap[mergedBranchName]) {
                 try {
                   console.log('  -> Calling branch.merge()');
-                  
+
                   // 格式化 author 为 "Name <email>" 格式
-                  const authorStr = commit.author?.name && commit.author?.email 
-                    ? `${commit.author.name} <${commit.author.email}>`
-                    : commit.author?.name || 'Unknown';
-                  
+                  const authorStr = commit.author?.name && commit.author?.email ? `${commit.author.name} <${commit.author.email}>` : commit.author?.name || 'Unknown';
+
                   // 确保 subject 是字符串
                   const subjectStr = String(commit.subject || '');
-                  
-                  branch.merge(branchMap[mergedBranchName], {
+
+                  const timeStr = commit.author?.date ? dayjs(commit.author.date).format('YYYY-MM-DD HH:mm') : '';
+
+                  const mergeCommitOptions = {
                     hash: commit.commit.short,
                     subject: subjectStr,
                     author: authorStr,
                     renderMessage: renderCommit => {
                       console.log('renderMessage called for merge:', commit.commit.short);
                       try {
-                        const timeStr = commit.author?.date ? dayjs(commit.author.date).format('YYYY-MM-DD HH:mm') : '';
                         const authorName = commit.author?.name || '';
                         const authorColor = stringToColor(authorName);
                         const hashShort = commit.commit.short;
@@ -326,7 +319,6 @@ const GitGraphManagerInner = ({ data, onCommitSelect, onBranchSelect }) => {
                         );
                       } catch (error) {
                         console.error('Error rendering merge commit:', error, commit);
-                        // 返回一个简单的文本作为回退
                         return (
                           <g>
                             <text x="0" y="0" fill="#666" style={{ font: 'normal 9pt Calibri' }}>
@@ -336,7 +328,27 @@ const GitGraphManagerInner = ({ data, onCommitSelect, onBranchSelect }) => {
                         );
                       }
                     }
+                  };
+
+                  console.log('Merge commitOptions:', {
+                    hash: mergeCommitOptions.hash,
+                    subject: mergeCommitOptions.subject,
+                    hasRenderMessage: typeof mergeCommitOptions.renderMessage === 'function'
                   });
+
+                  console.log('[DEBUG] Full mergeCommitOptions object:', mergeCommitOptions);
+                  console.log('[DEBUG] mergeCommitOptions keys:', Object.keys(mergeCommitOptions));
+
+                  const mergeOptions = {
+                    branch: branchMap[mergedBranchName],
+                    commitOptions: mergeCommitOptions
+                  };
+
+                  console.log('[DEBUG] Full mergeOptions object:', mergeOptions);
+                  console.log('[DEBUG] mergeOptions.commitOptions:', mergeOptions.commitOptions);
+                  console.log('[DEBUG] mergeOptions.commitOptions keys:', Object.keys(mergeOptions.commitOptions));
+
+                  branch.merge(mergeOptions);
                   console.log('  -> branch.merge() completed successfully');
                   return;
                 } catch (e) {
@@ -346,9 +358,8 @@ const GitGraphManagerInner = ({ data, onCommitSelect, onBranchSelect }) => {
                 console.log('  -> Merge conditions not met, falling back to normal commit');
               }
             }
-            */
 
-            // 所有提交统一使用 commit() 方法
+            // 非 merge 提交或 merge 失败时，使用普通 commit
             const timeStr = commit.author?.date ? dayjs(commit.author.date).format('YYYY-MM-DD HH:mm') : '';
 
             // 格式化 author 为 "Name <email>" 格式
