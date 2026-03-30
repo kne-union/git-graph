@@ -13,5 +13,6 @@ export default {
   noCommitSelected: '请选择一个提交',
   selectCommit: '选择一个提交查看变更文件',
   branch: '分支',
-  commits: '提交'
+  commits: '提交',
+  merged: '已合并'
 };
