@@ -205,8 +205,46 @@ doc/
 
 #### 示例代码
 
-- 基础示例
-- 展示GitGraphManager的基本使用方法，包含分支列表、提交历史和提交详情三个面板
+- 从 GitHub 获取数据
+- 展示如何从 GitHub 仓库获取真实的 Git 数据并可视化，默认加载 kne-union/components-core 仓库
+- _GitGraph(@kne/current-lib_git-graph)[import * as _GitGraph from "@kne/git-graph"],(@kne/current-lib_git-graph/dist/index.css),antd(antd)
+
+```jsx
+const { default: GitGraphManager, GitDataFetcher } = _GitGraph;
+const { message } = antd;
+
+const GitHubExample = () => {
+  const handleCommitSelect = commit => {
+    message.info(&#96;选中提交: ${commit.subject}&#96;);
+  };
+
+  const handleBranchSelect = branch => {
+    message.info(&#96;选中分支: ${branch.name}&#96;);
+  };
+  return (
+    <div style={{ height: '700px' }}>
+      <GitDataFetcher 
+        defaultRepo="https://github.com/kne-union/components-core"
+        defaultMaxCommits={0}
+      >
+        {(gitData) => (
+          <GitGraphManager 
+            data={gitData} 
+            onCommitSelect={handleCommitSelect} 
+            onBranchSelect={handleBranchSelect} 
+          />
+        )}
+      </GitDataFetcher>
+    </div>
+  );
+};
+
+render(<GitHubExample />);
+
+```
+
+- 使用 Mock 数据
+- 展示GitGraphManager的基本使用方法，使用预定义的 mock 数据
 - _GitGraph(@kne/current-lib_git-graph)[import * as _GitGraph from "@kne/git-graph"],(@kne/current-lib_git-graph/dist/index.css),antd(antd),_mockData(./doc/mockData.js)
 
 ```jsx

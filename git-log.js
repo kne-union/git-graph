@@ -53,10 +53,37 @@ const getGitData = async () => {
     .filter(b => !b.name.startsWith('remotes/'))
     .map(b => b.name);
 
+  // 首先为每个分支构建其专属提交列表（使用 --first-parent）
+  const branchCommits = {};
+  localBranches.forEach(branchName => {
+    try {
+      const commits = execSync(
+        `git log --first-parent --format=%h ${branchName}`,
+        { cwd: repoPath, encoding: 'utf8' }
+      )
+        .trim()
+        .split('\n')
+        .filter(Boolean);
+      branchCommits[branchName] = new Set(commits);
+    } catch (e) {
+      branchCommits[branchName] = new Set();
+    }
+  });
+
+  // 为每个提交确定其主分支（优先级：直接在分支上 > 最近的分支）
+  const commitToBranch = {};
+  
+  // 先标记每个分支的直接提交
+  Object.entries(branchCommits).forEach(([branchName, commits]) => {
+    commits.forEach(commitHash => {
+      if (!commitToBranch[commitHash]) {
+        commitToBranch[commitHash] = branchName;
+      }
+    });
+  });
+
   data.commits = rawCommits.map(commit => {
     try {
-      // git-log-parser 可能已经返回 parents 字段，格式为 [{hash: 'xxx'}]
-      // 或者我们需要自己获取
       let parents = commit.parents || [];
 
       // 如果 parents 为空或格式不对，尝试从 git 命令获取
@@ -67,13 +94,15 @@ const getGitData = async () => {
         )
           .trim()
           .split(' ')
-          .slice(1); // 第一个是自己，后面是父提交
+          .slice(1);
 
         parents = parentsOutput.map(hash => hash.substring(0, 7));
       } else if (typeof parents[0] === 'string') {
-        // 已经是字符串数组，确保使用短哈希
         parents = parents.map(hash => hash.substring(0, 7));
       }
+
+      // 判断是否是合并提交
+      const isMerge = parents.length > 1;
 
       // 获取包含该提交的所有分支
       const branches = execSync(
@@ -84,11 +113,27 @@ const getGitData = async () => {
         .map(line => line.replace('*', '').trim())
         .filter(line => line && !line.startsWith('remotes/'));
 
-      // 找到第一个匹配的本地分支作为主分支
-      const primaryBranch = branches.find(b => localBranches.includes(b)) || branches[0] || 'master';
-
-      // 判断是否是合并提交（有多个父提交）
-      const isMerge = parents.length > 1;
+      // 确定主分支
+      let primaryBranch = commitToBranch[commit.commit.short];
+      
+      // 如果没有直接匹配，尝试通过父提交推断
+      if (!primaryBranch && parents.length > 0) {
+        // 对于合并提交，第二个父提交通常是被合并的分支
+        if (isMerge && parents.length >= 2) {
+          const secondParent = parents[1];
+          primaryBranch = commitToBranch[secondParent];
+        }
+        
+        // 如果还是没有，使用第一个父提交的分支
+        if (!primaryBranch) {
+          primaryBranch = commitToBranch[parents[0]];
+        }
+      }
+      
+      // 最后的回退：使用 branches 中的第一个本地分支
+      if (!primaryBranch) {
+        primaryBranch = branches.find(b => localBranches.includes(b)) || branches[0] || 'master';
+      }
 
       return {
         ...commit,

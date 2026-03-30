@@ -2,8 +2,27 @@
   "isFull": true,
   "list": [
     {
-      "title": "基础示例",
-      "description": "展示GitGraphManager的基本使用方法，包含分支列表、提交历史和提交详情三个面板",
+      "title": "从 GitHub 获取数据",
+      "description": "展示如何从 GitHub 仓库获取真实的 Git 数据并可视化，默认加载 kne-union/components-core 仓库",
+      "code": "./github.js",
+      "scope": [
+        {
+          "name": "_GitGraph",
+          "packageName": "@kne/current-lib_git-graph",
+          "importStatement": "import * as _GitGraph from \"@kne/git-graph\""
+        },
+        {
+          "packageName": "@kne/current-lib_git-graph/dist/index.css"
+        },
+        {
+          "name": "antd",
+          "packageName": "antd"
+        }
+      ]
+    },
+    {
+      "title": "使用 Mock 数据",
+      "description": "展示GitGraphManager的基本使用方法，使用预定义的 mock 数据",
       "code": "./base.js",
       "scope": [
         {
