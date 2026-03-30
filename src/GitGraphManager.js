@@ -35,8 +35,9 @@ const compactTemplate = templateExtend(TemplateName.Metro, {
       strokeWidth: 2
     },
     message: {
-      displayAuthor: true,
-      displayHash: true,
+      display: true, // 启用消息显示以便 renderMessage 生效
+      displayAuthor: true, // 禁用默认作者格式
+      displayHash: true, // 禁用默认哈希格式
       font: 'normal 9pt Calibri'
     }
   }
@@ -129,44 +130,121 @@ const GitGraphManagerInner = ({ data, onCommitSelect, onBranchSelect }) => {
             commitMap[commit.commit.short] = { commit, index };
           });
 
-          // 获取每个提交所属的分支
-          const getCommitBranch = commitHash => {
-            const info = commitMap[commitHash];
-            if (!info) return null;
-            return info.commit.primaryBranch;
+          // 从合并提交的 subject 中提取被合并的分支名
+          const extractMergedBranch = commit => {
+            if (!commit.isMerge) return null;
+
+            const subject = commit.subject || '';
+
+            // 匹配 "Merge pull request #xxx from leapin-ai/branch-name"
+            let match = subject.match(/from\s+[\w-]+\/([\w-]+)/);
+            if (match) return match[1];
+
+            // 匹配 "Merge branch 'branch-name'"
+            match = subject.match(/Merge branch ['"]([^'"]+)['"]/);
+            if (match) {
+              const branchName = match[1];
+              // 排除远程合并（如 "Merge branch 'linzp' of https://..."）
+              if (!subject.includes(' of ') || subject.includes('into')) {
+                return branchName;
+              }
+            }
+
+            return null;
           };
 
-          // 找到每个分支的起始提交（最早的属于该分支的提交）
-          const branchStartCommits = {};
-          sortedCommits.forEach(commit => {
-            if (!branchStartCommits[commit.primaryBranch]) {
-              branchStartCommits[commit.primaryBranch] = commit.commit.short;
+          // 分析每个提交真正属于哪个分支
+          const commitBranchMap = {};
+
+          // 方法1：从分支 HEAD 开始回溯
+          allBranches.forEach(branchInfo => {
+            const branchName = branchInfo.name;
+            const headHash = branchRefs[branchName];
+            if (!headHash) return;
+
+            let currentHash = headHash;
+            const visited = new Set();
+
+            while (currentHash && commitMap[currentHash] && !visited.has(currentHash)) {
+              visited.add(currentHash);
+              const commitInfo = commitMap[currentHash];
+
+              // 只标记还没有被标记的提交
+              if (!commitBranchMap[currentHash]) {
+                commitBranchMap[currentHash] = branchName;
+              }
+
+              // 沿着第一父提交回溯
+              const parents = commitInfo.commit.parents || [];
+              currentHash = parents[0];
             }
           });
 
-          // 从 master 分支开始，递归构建分支图
+          // 方法2：从合并提交推断被合并分支的提交
+          sortedCommits.forEach(commit => {
+            if (commit.isMerge && commit.parents.length >= 2) {
+              const mergedBranchName = extractMergedBranch(commit);
+              if (mergedBranchName) {
+                // 从第二个父提交开始，标记为被合并的分支
+                const secondParentHash = commit.parents[1];
+                let currentHash = secondParentHash;
+                const visited = new Set();
+
+                while (currentHash && commitMap[currentHash] && !visited.has(currentHash)) {
+                  visited.add(currentHash);
+                  const commitInfo = commitMap[currentHash];
+
+                  // 如果这个提交还没有被标记，或者被标记为错误的分支
+                  if (!commitBranchMap[currentHash] || commitBranchMap[currentHash] === commit.primaryBranch) {
+                    commitBranchMap[currentHash] = mergedBranchName;
+                  }
+
+                  // 继续回溯第一父提交
+                  const parents = commitInfo.commit.parents || [];
+                  currentHash = parents[0];
+
+                  // 如果遇到已经被正确标记的提交，停止
+                  if (currentHash && commitBranchMap[currentHash] === mergedBranchName) {
+                    break;
+                  }
+                }
+              }
+            }
+          });
+
+          // 从 master 分支开始
           const masterBranch = gitgraph.branch('master');
           branchMap['master'] = masterBranch;
 
           // 遍历所有提交，按正确顺序绘制
           sortedCommits.forEach(commit => {
-            const branchName = commit.primaryBranch;
+            console.log('Processing commit:', commit.commit.short, commit.subject);
+
+            // 验证提交数据结构
+            if (!commit.commit || !commit.commit.short) {
+              console.error('Invalid commit structure:', commit);
+              return;
+            }
+
+            // 使用分析出的分支，如果没有则使用原始的 primaryBranch
+            const branchName = commitBranchMap[commit.commit.short] || commit.primaryBranch;
             let branch = branchMap[branchName];
             const parents = commit.parents || [];
             const isMerge = commit.isMerge;
 
+            console.log('  -> branchName:', branchName, 'branch exists:', !!branch, 'isMerge:', isMerge);
+
             // 如果分支还未创建
             if (!branch) {
-              // 找到分支的分叉点
-              const startCommitHash = branchStartCommits[branchName];
-              const startCommitInfo = commitMap[startCommitHash];
+              // 找到该分支第一个提交的父提交所在的分支
+              const firstCommitOfBranch = sortedCommits.find(c => (commitBranchMap[c.commit.short] || c.primaryBranch) === branchName);
 
-              if (startCommitInfo && startCommitInfo.commit.parents?.length > 0) {
-                // 从父提交所在分支分叉
-                const parentBranch = startCommitInfo.commit.parents.map(p => getCommitBranch(p)).find(b => branchMap[b]);
+              if (firstCommitOfBranch && firstCommitOfBranch.parents?.length > 0) {
+                const parentHash = firstCommitOfBranch.parents[0];
+                const parentBranchName = commitBranchMap[parentHash] || commitMap[parentHash]?.commit.primaryBranch;
 
-                if (parentBranch && parentBranch !== branchName) {
-                  branch = branchMap[parentBranch].branch(branchName);
+                if (parentBranchName && branchMap[parentBranchName] && parentBranchName !== branchName) {
+                  branch = branchMap[parentBranchName].branch(branchName);
                 } else {
                   branch = masterBranch.branch(branchName);
                 }
@@ -178,99 +256,168 @@ const GitGraphManagerInner = ({ data, onCommitSelect, onBranchSelect }) => {
 
             // 处理合并提交
             if (isMerge && parents.length >= 2) {
-              const mainParent = parents[0];
-              const mergedParent = parents[1];
-              const mergedBranch = getCommitBranch(mergedParent);
+              console.log('  -> Attempting merge for:', commit.commit.short);
 
-              // 如果合并的来源分支存在且不是当前分支
-              if (mergedBranch && mergedBranch !== branchName && branchMap[mergedBranch]) {
+              // 优先从 subject 提取被合并的分支名
+              let mergedBranchName = extractMergedBranch(commit);
+
+              // 如果提取失败，使用第二个父提交的分支
+              if (!mergedBranchName) {
+                const mergedParentHash = parents[1];
+                mergedBranchName = commitBranchMap[mergedParentHash] || commitMap[mergedParentHash]?.commit.primaryBranch;
+              }
+
+              console.log('  -> mergedBranchName:', mergedBranchName, 'exists in branchMap:', !!branchMap[mergedBranchName]);
+
+              // 如果被合并的分支存在且不是当前分支
+              if (mergedBranchName && mergedBranchName !== branchName && branchMap[mergedBranchName]) {
                 try {
+                  console.log('  -> Calling branch.merge()');
+
+                  // 格式化 author 为 "Name <email>" 格式
+                  const authorStr = commit.author?.name && commit.author?.email ? `${commit.author.name} <${commit.author.email}>` : commit.author?.name || 'Unknown';
+
+                  // 确保 subject 是字符串
+                  const subjectStr = String(commit.subject || '');
+
                   const timeStr = commit.author?.date ? dayjs(commit.author.date).format('YYYY-MM-DD HH:mm') : '';
+
+                  const mergeCommitOptions = {
+                    hash: commit.commit.short,
+                    subject: subjectStr,
+                    author: authorStr,
+                    renderMessage: renderCommit => {
+                      console.log('renderMessage called for merge:', commit.commit.short);
+                      try {
+                        const authorName = commit.author?.name || '';
+                        const authorColor = stringToColor(authorName);
+                        const hashShort = commit.commit.short;
+                        const messageText = `${commit.subject}${timeStr ? ` (${timeStr})` : ''}`;
+                        const branchColor = renderCommit.style.dot.color;
+                        const dotSize = renderCommit.style.dot.size || 5;
+
+                        const branchWidth = branchName.length * 6 + 16;
+                        const hashWidth = hashShort.length * 6;
+                        const authorWidth = authorName.length * 6 + 6;
+
+                        return (
+                          <g>
+                            <rect x="0" y={dotSize - 8} width={branchWidth} height="16" rx="8" fill={branchColor} />
+                            <text x="8" y={dotSize} fill="#FFFFFF" fontSize="9pt" fontFamily="Calibri" fontWeight="bold" alignmentBaseline="middle" dominantBaseline="middle">
+                              {branchName}
+                            </text>
+                            <text x={branchWidth + 8} y={dotSize} fill="#999" fontSize="9pt" fontFamily="Consolas, monospace" alignmentBaseline="middle" dominantBaseline="middle">
+                              {hashShort}
+                            </text>
+                            <text x={branchWidth + hashWidth + 20} y={dotSize} fill={authorColor} fontSize="9pt" fontFamily="Calibri" fontWeight="bold" alignmentBaseline="middle" dominantBaseline="middle">
+                              {authorName}:
+                            </text>
+                            <text x={branchWidth + hashWidth + authorWidth + 28} y={dotSize} fill="#666" fontSize="9pt" fontFamily="Calibri" alignmentBaseline="middle" dominantBaseline="middle">
+                              {messageText}
+                            </text>
+                          </g>
+                        );
+                      } catch (error) {
+                        console.error('Error rendering merge commit:', error, commit);
+                        return (
+                          <g>
+                            <text x="0" y="0" fill="#666" style={{ font: 'normal 9pt Calibri' }}>
+                              {commit.subject || 'Error rendering commit'}
+                            </text>
+                          </g>
+                        );
+                      }
+                    }
+                  };
+
+                  console.log('Merge commitOptions:', {
+                    hash: mergeCommitOptions.hash,
+                    subject: mergeCommitOptions.subject,
+                    hasRenderMessage: typeof mergeCommitOptions.renderMessage === 'function'
+                  });
+
+                  console.log('[DEBUG] Full mergeCommitOptions object:', mergeCommitOptions);
+                  console.log('[DEBUG] mergeCommitOptions keys:', Object.keys(mergeCommitOptions));
+
+                  const mergeOptions = {
+                    branch: branchMap[mergedBranchName],
+                    commitOptions: mergeCommitOptions
+                  };
+
+                  console.log('[DEBUG] Full mergeOptions object:', mergeOptions);
+                  console.log('[DEBUG] mergeOptions.commitOptions:', mergeOptions.commitOptions);
+                  console.log('[DEBUG] mergeOptions.commitOptions keys:', Object.keys(mergeOptions.commitOptions));
+
+                  branch.merge(mergeOptions);
+                  console.log('  -> branch.merge() completed successfully');
+                  return;
+                } catch (e) {
+                  console.warn('合并失败，回退到普通提交:', e);
+                }
+              } else {
+                console.log('  -> Merge conditions not met, falling back to normal commit');
+              }
+            }
+
+            // 非 merge 提交或 merge 失败时，使用普通 commit
+            const timeStr = commit.author?.date ? dayjs(commit.author.date).format('YYYY-MM-DD HH:mm') : '';
+
+            // 格式化 author 为 "Name <email>" 格式
+            const authorStr = commit.author?.name && commit.author?.email ? `${commit.author.name} <${commit.author.email}>` : commit.author?.name || 'Unknown';
+
+            // 确保 subject 是字符串
+            const subjectStr = String(commit.subject || '');
+
+            branch.commit({
+              hash: commit.commit.short,
+              subject: subjectStr,
+              author: authorStr,
+              renderMessage: renderCommit => {
+                console.log('renderMessage called for commit:', commit.commit.short);
+                try {
+                  const branchColor = renderCommit.style.dot.color;
+                  const dotSize = renderCommit.style.dot.size || 5;
                   const authorName = commit.author?.name || '';
                   const authorColor = stringToColor(authorName);
                   const hashShort = commit.commit.short;
                   const messageText = `${commit.subject}${timeStr ? ` (${timeStr})` : ''}`;
 
-                  branch.merge(branchMap[mergedBranch], {
-                    hash: commit.commit.short,
-                    subject: commit.subject,
-                    author: commit.author?.name,
-                    renderMessage: renderCommit => {
-                      const branchColor = renderCommit.style.dot.color;
-                      const dotSize = renderCommit.style.dot.size || 5;
+                  const branchWidth = branchName.length * 6 + 16;
+                  const hashWidth = hashShort.length * 6;
+                  const authorWidth = authorName.length * 6 + 6;
 
-                      const branchWidth = branchName.length * 6 + 16;
-                      const hashWidth = hashShort.length * 6;
-                      const authorWidth = authorName.length * 6 + 6;
-
-                      return (
-                        <g>
-                          <rect x="0" y={dotSize - 8} width={branchWidth} height="16" rx="8" fill={branchColor} />
-                          <text x="8" y={dotSize} fill="#FFFFFF" style={{ font: 'bold 9pt Calibri' }} alignmentBaseline="middle" dominantBaseline="middle">
-                            {branchName}
-                          </text>
-                          <text x={branchWidth + 8} y={dotSize} fill="#999" style={{ font: 'normal 9pt Consolas, monospace' }} alignmentBaseline="middle" dominantBaseline="middle">
-                            {hashShort}
-                          </text>
-                          <text x={branchWidth + hashWidth + 20} y={dotSize} fill={authorColor} style={{ font: 'bold 9pt Calibri' }} alignmentBaseline="middle" dominantBaseline="middle">
-                            {authorName}:
-                          </text>
-                          <text x={branchWidth + hashWidth + authorWidth + 28} y={dotSize} fill="#666" style={{ font: 'normal 9pt Calibri' }} alignmentBaseline="middle" dominantBaseline="middle">
-                            {messageText}
-                          </text>
-                        </g>
-                      );
-                    }
-                  });
-                  return;
-                } catch (e) {
-                  // 合并失败时回退到普通提交
+                  return (
+                    <g>
+                      {/* 分支名称标签 */}
+                      <rect x="0" y={dotSize - 8} width={branchWidth} height="16" rx="8" fill={branchColor} />
+                      <text x="8" y={dotSize} fill="#FFFFFF" fontSize="9pt" fontFamily="Calibri" fontWeight="bold" alignmentBaseline="middle" dominantBaseline="middle">
+                        {branchName}
+                      </text>
+                      {/* Hash */}
+                      <text x={branchWidth + 8} y={dotSize} fill="#999" fontSize="9pt" fontFamily="Consolas, monospace" alignmentBaseline="middle" dominantBaseline="middle">
+                        {hashShort}
+                      </text>
+                      {/* 作者 */}
+                      <text x={branchWidth + hashWidth + 20} y={dotSize} fill={authorColor} fontSize="9pt" fontFamily="Calibri" fontWeight="bold" alignmentBaseline="middle" dominantBaseline="middle">
+                        {authorName}:
+                      </text>
+                      {/* 提交信息 */}
+                      <text x={branchWidth + hashWidth + authorWidth + 28} y={dotSize} fill="#666" fontSize="9pt" fontFamily="Calibri" alignmentBaseline="middle" dominantBaseline="middle">
+                        {messageText}
+                      </text>
+                    </g>
+                  );
+                } catch (error) {
+                  console.error('Error rendering commit:', error, commit);
+                  // 返回一个简单的文本作为回退
+                  return (
+                    <g>
+                      <text x="0" y="0" fill="#666" style={{ font: 'normal 9pt Calibri' }}>
+                        {commit.subject || 'Error rendering commit'}
+                      </text>
+                    </g>
+                  );
                 }
-              }
-            }
-
-            // 普通提交
-            const timeStr = commit.author?.date ? dayjs(commit.author.date).format('YYYY-MM-DD HH:mm') : '';
-            const currentBranchName = commit.primaryBranch;
-
-            branch.commit({
-              hash: commit.commit.short,
-              subject: commit.subject,
-              author: commit.author?.name,
-              authorEmail: commit.author?.email,
-              renderMessage: renderCommit => {
-                const branchColor = renderCommit.style.dot.color;
-                const dotSize = renderCommit.style.dot.size || 5;
-                const authorName = commit.author?.name || '';
-                const authorColor = stringToColor(authorName);
-                const hashShort = commit.commit.short;
-                const messageText = `${commit.subject}${timeStr ? ` (${timeStr})` : ''}`;
-
-                const branchWidth = currentBranchName.length * 6 + 16;
-                const hashWidth = hashShort.length * 6;
-                const authorWidth = authorName.length * 6 + 6;
-
-                return (
-                  <g>
-                    {/* 分支名称标签 */}
-                    <rect x="0" y={dotSize - 8} width={branchWidth} height="16" rx="8" fill={branchColor} />
-                    <text x="8" y={dotSize} fill="#FFFFFF" style={{ font: 'bold 9pt Calibri' }} alignmentBaseline="middle" dominantBaseline="middle">
-                      {currentBranchName}
-                    </text>
-                    {/* Hash */}
-                    <text x={branchWidth + 8} y={dotSize} fill="#999" style={{ font: 'normal 9pt Consolas, monospace' }} alignmentBaseline="middle" dominantBaseline="middle">
-                      {hashShort}
-                    </text>
-                    {/* 作者 */}
-                    <text x={branchWidth + hashWidth + 20} y={dotSize} fill={authorColor} style={{ font: 'bold 9pt Calibri' }} alignmentBaseline="middle" dominantBaseline="middle">
-                      {authorName}:
-                    </text>
-                    {/* 提交信息 */}
-                    <text x={branchWidth + hashWidth + authorWidth + 28} y={dotSize} fill="#666" style={{ font: 'normal 9pt Calibri' }} alignmentBaseline="middle" dominantBaseline="middle">
-                      {messageText}
-                    </text>
-                  </g>
-                );
               }
             });
           });
