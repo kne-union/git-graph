@@ -10,12 +10,14 @@ const BranchListInner = ({ localBranches = [], remoteBranches = [], selectedBran
   const renderBranchItem = branch => {
     const isActive = selectedBranch?.name === branch.name;
     const isCurrent = branch.isCurrent;
+    const isMerged = branch.isMerged;
 
     return (
-      <div key={branch.name} className={`${styles.branchItem} ${isActive ? styles.branchItemActive : ''}`} onClick={() => onBranchClick(branch)}>
+      <div key={branch.name} className={`${styles.branchItem} ${isActive ? styles.branchItemActive : ''} ${isMerged ? styles.branchItemMerged : ''}`} onClick={() => onBranchClick(branch)}>
         <BranchesOutlined />
         <span>{branch.name}</span>
         {isCurrent && <StarOutlined className={styles.currentBadge} />}
+        {isMerged && <span className={styles.mergedBadge}>{formatMessage({ id: 'merged' })}</span>}
       </div>
     );
   };

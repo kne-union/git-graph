@@ -13,5 +13,6 @@ export default {
   noCommitSelected: 'Please select a commit',
   selectCommit: 'Select a commit to view changed files',
   branch: 'Branch',
-  commits: 'commits'
+  commits: 'commits',
+  merged: 'Merged'
 };

@@ -50,9 +50,48 @@ const GitGraphManagerInner = ({ data, onCommitSelect, onBranchSelect }) => {
 
   const { branches = [], commits = [] } = data || {};
 
+  // 从提交记录中提取所有分支（包括已合并删除的分支）
+  const allBranchesFromCommits = useMemo(() => {
+    const branchSet = new Set();
+    commits.forEach(commit => {
+      if (commit.primaryBranch) {
+        branchSet.add(commit.primaryBranch);
+      }
+      if (commit.branches && Array.isArray(commit.branches)) {
+        commit.branches.forEach(b => branchSet.add(b));
+      }
+    });
+    return Array.from(branchSet);
+  }, [commits]);
+
+  // 合并现有分支和从提交中提取的分支
+  const allBranches = useMemo(() => {
+    const branchMap = new Map();
+
+    // 先添加现有分支（保留 isCurrent 信息）
+    branches.forEach(branch => {
+      if (!branch.name.startsWith('remotes/')) {
+        branchMap.set(branch.name, branch);
+      }
+    });
+
+    // 添加从提交中发现的分支（如果不存在）
+    allBranchesFromCommits.forEach(branchName => {
+      if (!branchMap.has(branchName) && !branchName.startsWith('remotes/')) {
+        branchMap.set(branchName, {
+          name: branchName,
+          isCurrent: false,
+          isMerged: true // 标记为已合并的分支
+        });
+      }
+    });
+
+    return Array.from(branchMap.values());
+  }, [branches, allBranchesFromCommits]);
+
   const localBranches = useMemo(() => {
-    return branches.filter(branch => !branch.name.startsWith('remotes/'));
-  }, [branches]);
+    return allBranches.filter(branch => !branch.name.startsWith('remotes/'));
+  }, [allBranches]);
 
   const remoteBranches = useMemo(() => {
     return branches.filter(branch => branch.name.startsWith('remotes/'));
