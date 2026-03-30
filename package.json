@@ -10,6 +10,7 @@
   "source": "src/index.js",
   "scripts": {
     "init": "husky && npm run init-example",
+    "postinstall": "patch-package",
     "start": "run-p start:lib start:md start:example",
     "build": "run-s build:lib build:md build:example",
     "init-example": "modules-dev-libs-init",
