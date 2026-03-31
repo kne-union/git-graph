@@ -10,7 +10,6 @@
   "source": "src/index.js",
   "scripts": {
     "init": "husky && npm run init-example",
-    "postinstall": "patch-package",
     "start": "run-p start:lib start:md start:example",
     "build": "run-s build:lib build:md build:example",
     "init-example": "modules-dev-libs-init",
@@ -99,7 +98,6 @@
     "react-dom": "^18.2.0"
   },
   "dependencies": {
-    "@gitgraph/react": "^1.6.0",
     "@kne/react-intl": "^0.1.9",
     "dayjs": "^1.11.20"
   }
