@@ -1,6 +1,6 @@
 {
   "name": "@kne/git-graph",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Git commit history visualization component, supporting branch visualization, merge operations, and internationalization",
   "syntax": {
     "esmodules": true
