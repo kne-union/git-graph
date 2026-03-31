@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Splitter } from 'antd';
-import { Gitgraph, templateExtend, TemplateName } from '@gitgraph/react';
+import { Gitgraph, templateExtend, TemplateName } from './gitgraph';
 import dayjs from 'dayjs';
 
 import { useIntl } from '@kne/react-intl';
